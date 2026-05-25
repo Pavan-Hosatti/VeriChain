@@ -1,0 +1,46 @@
+name: CI - Smoke E2E
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install backend deps
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Install frontend deps
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: ./frontend
+        run: npm run build
+
+      - name: Start backend
+        working-directory: ./
+        env:
+          NODE_ENV: test
+          PORT: 4001
+        run: |
+          node backend/index.js &
+          # wait for backend to be ready
+          n=0; until curl -sSf http://localhost:4001/api/health || [ $n -ge 20 ]; do sleep 1; n=$((n+1)); done
+
+      - name: Run E2E offline smoke test
+        working-directory: ./frontend
+        run: |
+          node scripts/e2e_offline_test.mjs

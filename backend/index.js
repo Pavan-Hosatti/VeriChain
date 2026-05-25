@@ -19,7 +19,8 @@ const allowedOrigins = [
     'http://127.0.0.1:3001',
     'http://127.0.0.1:3002',
     'https://rapid-auth-two.vercel.app',
-    'https://rapid-auth-ac8wmtkq8-pavan-hosattis-projects.vercel.app'
+    'https://rapid-auth-ac8wmtkq8-pavan-hosattis-projects.vercel.app',
+    'https://veri-chain-s5q7.vercel.app'
 ];
 
 app.use(cors({
