@@ -357,8 +357,6 @@ cd frontend && node scripts/e2e_offline_test.mjs
 | Student | Email: `ravi@campusvault.ai` / OTP: `123456` |
 | Recruiter | Email: `hr@campusvault.ai` / OTP: `123456` |
 
-> Screenshots and walkthrough video coming soon.
-
 ---
 
 ## Team
