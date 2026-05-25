@@ -1,12 +1,64 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { Shield, Zap, CircleCheck, History } from 'lucide-react';
 import * as algosdk from 'algosdk';
 import { peraWallet } from '../services/WalletService';
 import { HashService } from '../services/HashService';
 import { BlockchainService, APP_ID } from '../services/BlockchainService';
 
-
 const CLAIM_TYPES = ['Marksheet', 'Degree', 'NOC', 'Sports', 'Placement', 'Certificate', 'Internship'];
+
+const AI_SERVICE_URL = import.meta.env.VITE_AI_SERVICE_URL || 'http://localhost:8000';
+
+// ── Inline badge component (student sees dot only, admin sees this with flags) ──
+const AiBadge = ({ badge, flags = [], showFlags = false }) => {
+    const [expanded, setExpanded] = useState(false);
+    if (!badge) return null;
+
+    const config = {
+        green:  { color: '#22c55e', bg: 'rgba(34,197,94,0.10)',  border: 'rgba(34,197,94,0.25)',  label: '🛡️ AI Verified' },
+        amber:  { color: '#f59e0b', bg: 'rgba(245,158,11,0.10)', border: 'rgba(245,158,11,0.25)', label: '⚠️ Needs Review' },
+        red:    { color: '#ef4444', bg: 'rgba(239,68,68,0.10)',  border: 'rgba(239,68,68,0.25)',  label: '🚨 Suspected Forgery' },
+    }[badge] || { color: '#888', bg: 'rgba(128,128,128,0.1)', border: 'rgba(128,128,128,0.2)', label: 'AI Checked' };
+
+    return (
+        <div style={{ marginTop: '0.5rem' }}>
+            <div
+                style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+                    background: config.bg, border: `1px solid ${config.border}`,
+                    borderRadius: '6px', padding: '3px 10px',
+                    fontSize: '0.72rem', fontWeight: '700', color: config.color,
+                    cursor: showFlags && flags.length > 0 ? 'pointer' : 'default',
+                }}
+                onClick={() => showFlags && flags.length > 0 && setExpanded(e => !e)}
+                title={showFlags && flags.length > 0 ? 'Click to view AI analysis flags' : ''}
+            >
+                {config.label}
+                {showFlags && flags.length > 0 && (
+                    <span style={{ opacity: 0.7, fontSize: '0.65rem' }}>{expanded ? '▲' : '▼'}</span>
+                )}
+            </div>
+            {showFlags && expanded && flags.length > 0 && (
+                <div style={{
+                    marginTop: '0.5rem', padding: '0.75rem',
+                    background: 'rgba(0,0,0,0.25)', borderRadius: '8px',
+                    border: '1px solid rgba(255,255,255,0.06)',
+                }}>
+                    {flags.map((f, i) => (
+                        <div key={i} style={{
+                            fontSize: '0.75rem', color: 'var(--cv-text-dim)',
+                            marginBottom: i < flags.length - 1 ? '0.4rem' : 0,
+                            display: 'flex', gap: '0.4rem',
+                        }}>
+                            <span style={{ color: config.color, flexShrink: 0 }}>›</span>
+                            <span>{f.message || f}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
 
 const ContractCaller = ({ address, students, onClaimIssued, issuers, claims, onRevoke, credentialRequests, setCredentialRequests }) => {
     const [studentId, setStudentId] = useState('');
@@ -21,9 +73,60 @@ const ContractCaller = ({ address, students, onClaimIssued, issuers, claims, onR
     const [txId, setTxId] = useState('');
     const fileRef = useRef(null);
 
+    // AI analysis state
+    const [aiBadge, setAiBadge] = useState(null);
+    const [aiFlags, setAiFlags] = useState([]);
+    const [aiLoading, setAiLoading] = useState(false);
+    const [aiStatus, setAiStatus] = useState('');
 
     const isWhitelisted = issuers.includes(address);
 
+    // ── AI Analysis ──────────────────────────────────────
+    const analyzeFile = async (file) => {
+        setAiBadge(null);
+        setAiFlags([]);
+        setAiStatus('');
+        setAiLoading(true);
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const res = await fetch(`${AI_SERVICE_URL}/analyze`, {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!res.ok) {
+                setAiStatus('Analysis service returned an error. Proceeding without AI check.');
+                setAiLoading(false);
+                return;
+            }
+
+            const data = await res.json();
+            setAiBadge(data.badge);
+            setAiFlags(data.flags || []);
+            setAiStatus(
+                data.layer_status?.vision_api !== 'ok'
+                    ? 'Vision AI fallback active — local analysis only'
+                    : ''
+            );
+        } catch {
+            // Network failure — fail silently, don't block minting
+            setAiStatus('AI service unreachable. Document will be minted without analysis.');
+        } finally {
+            setAiLoading(false);
+        }
+    };
+
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        setCertificate(file);
+        analyzeFile(file);
+    };
+
+    // ── Issue Credential ─────────────────────────────────
     const handleIssue = async (e) => {
         e.preventDefault();
         if (!studentId || !claimValue) {
@@ -36,14 +139,12 @@ const ContractCaller = ({ address, students, onClaimIssued, issuers, claims, onR
         setTxId('');
 
         try {
-            // Step 1: Hash document if attached
             let fileHash = '';
             if (certificate) {
                 setResult('🛡️ Hashing document (SHA-256)...');
                 fileHash = await HashService.hashFile(certificate);
             }
 
-            // Step 2: Create secure composite record hash
             const secureHash = await HashService.createSecureRecordHash({
                 studentId,
                 claimType,
@@ -55,8 +156,6 @@ const ContractCaller = ({ address, students, onClaimIssued, issuers, claims, onR
             let confirmedTxId = '';
 
             try {
-                // HIGH-CAPACITY ANCHORING: Using Payment Notes (1KB Limit) instead of Smart Contract State (128B Limit)
-                // This ensures the transaction succeeds even with long descriptions, as the contract 755797878 is full.
                 const txn = await BlockchainService.prepareAssetTransaction(
                     address,
                     secureHash,
@@ -80,7 +179,7 @@ const ContractCaller = ({ address, students, onClaimIssued, issuers, claims, onR
             } catch (err) {
                 console.error('On-chain failed:', err);
                 setResult(`❌ Error: ${err.message || 'Transaction failed'}`);
-                return; // Stop here if on-chain fails
+                return;
             }
 
             const student = students.find(s => s.id === studentId);
@@ -94,20 +193,25 @@ const ContractCaller = ({ address, students, onClaimIssued, issuers, claims, onR
                 txId: confirmedTxId,
                 secureHash,
                 previousVersion: baseRecordId || null,
+                // AI fields — undefined if no file was attached or analysis failed
+                aiBadge: aiBadge || undefined,
+                aiFlags: aiFlags.length > 0 ? aiFlags : undefined,
             });
 
-            // Reset form
             setStudentId('');
             setClaimValue('');
-            setToken('');
             setCertificate(null);
+            setAiBadge(null);
+            setAiFlags([]);
+            setAiStatus('');
 
-            // Remove from pending requests if it matches an active request
             if (credentialRequests && credentialRequests.length > 0) {
-                setCredentialRequests(credentialRequests.filter(req => !(req.studentId === studentId && req.claimType === claimType)));
+                setCredentialRequests(credentialRequests.filter(
+                    req => !(req.studentId === studentId && req.claimType === claimType)
+                ));
             }
 
-            setResult(`✅ Success! Hash anchored to Algorand. Tip: Log out and log in as the Student (Ravi) to see it!`);
+            setResult('✅ Success! Hash anchored to Algorand. Tip: Log out and log in as the Student (Ravi) to see it!');
         } catch (err) {
             console.error('Blockchain tx error:', err);
             setResult(`❌ Transaction failed: ${err.message || 'Unknown error'}`);
@@ -202,11 +306,34 @@ const ContractCaller = ({ address, students, onClaimIssued, issuers, claims, onR
                 </div>
 
                 <div className="cv-form-group">
-                    <label className="cv-label">Attach Document (Optional)</label>
+                    <label className="cv-label">
+                        Attach Document (Optional)
+                        {aiLoading && (
+                            <span style={{ marginLeft: '0.5rem', fontSize: '0.72rem', color: 'var(--cv-primary)', fontWeight: 600 }}>
+                                ⏳ AI analysing...
+                            </span>
+                        )}
+                    </label>
                     <div className="cv-file-zone" onClick={() => fileRef.current.click()}>
-                        <input type="file" hidden ref={fileRef} onChange={e => setCertificate(e.target.files[0])} />
+                        <input
+                            type="file"
+                            hidden
+                            ref={fileRef}
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            onChange={handleFileChange}
+                        />
                         {certificate ? `📄 ${certificate.name}` : '📁 Click to attach (hashed locally)'}
                     </div>
+
+                    {/* AI badge renders here after analysis */}
+                    {aiBadge && !aiLoading && (
+                        <AiBadge badge={aiBadge} flags={aiFlags} showFlags={true} />
+                    )}
+                    {aiStatus && !aiLoading && (
+                        <div style={{ fontSize: '0.7rem', color: 'var(--cv-text-muted)', marginTop: '0.3rem' }}>
+                            ℹ️ {aiStatus}
+                        </div>
+                    )}
                 </div>
 
                 <div className="cv-form-group">
@@ -271,17 +398,15 @@ const ContractCaller = ({ address, students, onClaimIssued, issuers, claims, onR
                                 borderRadius: '14px',
                                 padding: '1rem 1.25rem',
                                 display: 'flex',
-                                alignItems: 'center',
+                                alignItems: 'flex-start',
                                 gap: '1rem',
                                 flexWrap: 'wrap',
                             }}>
-                                {/* Status dot */}
                                 <div style={{
-                                    width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0,
+                                    width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0, marginTop: '6px',
                                     background: claim.status === 'active' ? '#22c55e' : claim.status === 'revoked' ? '#ef4444' : '#f59e0b'
                                 }} />
 
-                                {/* Main info */}
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.25rem' }}>
                                         <span style={{ fontWeight: '700', color: '#fff', fontSize: '0.9rem' }}>
@@ -302,9 +427,10 @@ const ContractCaller = ({ address, students, onClaimIssued, issuers, claims, onR
                                             ⛔ {claim.revocationReason}
                                         </div>
                                     )}
+                                    {/* Admin sees badge + expandable flags in the issuance registry */}
+                                    <AiBadge badge={claim.aiBadge} flags={claim.aiFlags} showFlags={true} />
                                 </div>
 
-                                {/* Actions */}
                                 {claim.status === 'active' && (
                                     <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0, alignItems: 'center' }}>
                                         <select
@@ -314,27 +440,23 @@ const ContractCaller = ({ address, students, onClaimIssued, issuers, claims, onR
                                                 const reason = e.target.value;
                                                 if (!reason) return;
                                                 const currentClaimId = claim.id;
-                                                if (window.confirm(`Revoke this record on-chain?\nReason: ${reason}`)) {
+                                                if (window.confirm(`Permanently revoke this credential for ${students.find(s => s.id === claim.studentId)?.name || 'Unknown'}?\nReason: ${reason}`)) {
                                                     setLoading(true);
-                                                    setResult(`⛓️ Preparing on-chain revocation anchor...`);
+                                                    setResult('⛓️ Preparing on-chain revocation anchor...');
                                                     try {
-                                                        // HIGH-CAPACITY ANCHORING: Using Payment Notes for Revocation
-                                                        // This ensures success even when the Smart Contract storage is full.
                                                         const txn = await BlockchainService.prepareAssetTransaction(
                                                             address,
-                                                            "REVOKED", // Sentinel hash to indicate revocation
+                                                            "REVOKED",
                                                             {
                                                                 type: "REVOKE",
                                                                 id: currentClaimId,
                                                                 reason: reason,
-                                                                target: claim.txId // Tie it to the original issuance transaction
+                                                                target: claim.txId
                                                             }
                                                         );
-
                                                         setResult('📱 Approve on Pera Wallet...');
                                                         const signedTxn = await peraWallet.signTransaction([[{ txn, signers: [address] }]]);
                                                         const confirmedTxId = await BlockchainService.sendTransaction(signedTxn[0]);
-
                                                         if (confirmedTxId) {
                                                             await BlockchainService.waitForConfirmation(confirmedTxId);
                                                             onRevoke(currentClaimId, reason);

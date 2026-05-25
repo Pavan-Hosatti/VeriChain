@@ -1,5 +1,63 @@
 import React, { useState } from 'react';
-import { History, CircleAlert } from 'lucide-react';
+import { History, CircleAlert, Search } from 'lucide-react';
+
+// Admin view: badge + expandable flags
+const AiBadge = ({ badge, flags = [] }) => {
+    const [expanded, setExpanded] = useState(false);
+    if (!badge) return null;
+
+    const config = {
+        green: { color: '#22c55e', bg: 'rgba(34,197,94,0.10)',  border: 'rgba(34,197,94,0.25)',  label: '🛡️ AI Verified' },
+        amber: { color: '#f59e0b', bg: 'rgba(245,158,11,0.10)', border: 'rgba(245,158,11,0.25)', label: '⚠️ Needs Review' },
+        red:   { color: '#ef4444', bg: 'rgba(239,68,68,0.10)',  border: 'rgba(239,68,68,0.25)',  label: '🚨 Suspected Forgery' },
+    }[badge] || { color: '#888', bg: 'rgba(128,128,128,0.1)', border: 'rgba(128,128,128,0.2)', label: 'AI Checked' };
+
+    return (
+        <div style={{ marginTop: '0.6rem' }}>
+            <div
+                style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+                    background: config.bg, border: `1px solid ${config.border}`,
+                    borderRadius: '6px', padding: '3px 10px',
+                    fontSize: '0.72rem', fontWeight: '700', color: config.color,
+                    cursor: flags.length > 0 ? 'pointer' : 'default',
+                    userSelect: 'none',
+                }}
+                onClick={() => flags.length > 0 && setExpanded(e => !e)}
+                title={flags.length > 0 ? 'Click to view AI forensic flags' : ''}
+            >
+                {config.label}
+                {flags.length > 0 && (
+                    <span style={{ opacity: 0.7, fontSize: '0.65rem' }}>
+                        {expanded ? '▲' : `▼ ${flags.length} flag${flags.length > 1 ? 's' : ''}`}
+                    </span>
+                )}
+            </div>
+
+            {expanded && flags.length > 0 && (
+                <div style={{
+                    marginTop: '0.5rem', padding: '0.75rem 1rem',
+                    background: 'rgba(0,0,0,0.3)', borderRadius: '8px',
+                    border: `1px solid ${config.border}`,
+                }}>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--cv-text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        AI Forensic Analysis
+                    </div>
+                    {flags.map((f, i) => (
+                        <div key={i} style={{
+                            fontSize: '0.75rem', color: 'var(--cv-text-dim)',
+                            marginBottom: i < flags.length - 1 ? '0.4rem' : 0,
+                            display: 'flex', gap: '0.5rem', alignItems: 'flex-start',
+                        }}>
+                            <span style={{ color: config.color, flexShrink: 0, marginTop: '1px' }}>›</span>
+                            <span>{typeof f === 'string' ? f : f.message}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
 
 const AuditTrail = ({ claims, students, onRevoke, onSupersede, address }) => {
     const [filter, setFilter] = useState('all');
@@ -22,7 +80,6 @@ const AuditTrail = ({ claims, students, onRevoke, onSupersede, address }) => {
             onRevoke(claimId, reason);
         }
     };
-
 
     return (
         <div className="cv-card">
@@ -101,6 +158,9 @@ const AuditTrail = ({ claims, students, onRevoke, onSupersede, address }) => {
                                         🆕 Superseded by: <code>{c.nextVersion}</code>
                                     </div>
                                 )}
+
+                                {/* Admin sees badge + expandable flags */}
+                                <AiBadge badge={c.aiBadge} flags={c.aiFlags || []} />
                             </div>
 
                             {c.status === 'active' && (
@@ -137,6 +197,10 @@ const AuditTrail = ({ claims, students, onRevoke, onSupersede, address }) => {
                 <div className="cv-stat">
                     <div style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--cv-primary)' }}>{claims.filter(c => c.status === 'active').length}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--cv-text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Current Active NFTs</div>
+                </div>
+                <div className="cv-stat">
+                    <div style={{ fontSize: '1.5rem', fontWeight: '700', color: '#f59e0b' }}>{claims.filter(c => c.aiBadge === 'amber' || c.aiBadge === 'red').length}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--cv-text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>AI Flagged</div>
                 </div>
             </div>
         </div>
