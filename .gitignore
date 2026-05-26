@@ -23,6 +23,7 @@ ai-service/venv/
 .env.development.local
 .env.test.local
 .env.production.local
+# NOTE: .env.production is NOT ignored — it only contains public URLs and is needed by Vercel builds
 
 # IDE
 .vscode/
