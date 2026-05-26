@@ -70,17 +70,20 @@ function App() {
     const [verifierOtpSent, setVerifierOtpSent] = useState(false);
     const [verifierSending, setVerifierSending] = useState(false);
 
-    // Session Restoration
+    // Session Restoration — silently restore Pera session if one exists;
+    // guard against stale/missing topics that would throw.
     useEffect(() => {
-        peraWallet.reconnectSession().then((accounts) => {
-            if (accounts.length > 0) {
-                // We don't necessarily know the role here, so we don't auto-login 
-                // but at least the session is active and won't crash on .connect()
-                console.log('Restored Pera Session:', accounts[0]);
-                // Optional: Listen for disconnect
-                peraWallet.connector?.on('disconnect', handleDisconnect);
-            }
-        }).catch(() => { });
+        try {
+            peraWallet.reconnectSession().then((accounts) => {
+                if (accounts && accounts.length > 0) {
+                    console.log('Restored Pera Session:', accounts[0]);
+                    peraWallet.connector?.on('disconnect', handleDisconnect);
+                }
+            }).catch(() => { /* session expired or never existed — ignore */ });
+        } catch (e) {
+            // reconnectSession itself can throw synchronously if internal state is bad
+            console.warn('Pera session restore skipped:', e.message);
+        }
     }, []);
 
     useEffect(() => {
@@ -222,25 +225,51 @@ function App() {
                 addAuditEntry('LOGIN', `${role.toUpperCase()} connected via Pera Wallet: ${accounts[0].slice(0, 8)}...`);
             }
         } catch (err) {
+            // "Connect modal is closed by user" — normal behavior, ignore silently
+            if (
+                err?.data?.type === 'CONNECT_MODAL_CLOSED' ||
+                err?.message?.includes('closed by user') ||
+                err?.message?.includes('Connect modal')
+            ) {
+                console.log('Pera modal closed by user — no action needed.');
+                return;
+            }
             if (err.message?.includes('Session currently connected')) {
                 // Fallback: if somehow a session is live but connect() was called
-                const accounts = await peraWallet.reconnectSession();
-                if (accounts.length > 0) {
-                    setAddress(accounts[0]);
-                    setUserRole(role);
-                    setStep(1);
+                try {
+                    const accounts = await peraWallet.reconnectSession();
+                    if (accounts && accounts.length > 0) {
+                        setAddress(accounts[0]);
+                        setUserRole(role);
+                        setStep(1);
+                    }
+                } catch (reconErr) {
+                    console.warn('Pera reconnect fallback failed:', reconErr);
                 }
             } else {
                 console.error('Pera connect failed:', err);
-                alert('⚠️ Could not connect to Pera Wallet.');
+                alert('⚠️ Could not connect to Pera Wallet. Make sure the Pera Wallet app is installed.');
             }
         }
     };
 
     // ── Disconnect ──
+    // Guard: only call peraWallet.disconnect() if the user logged in via Pera
+    // (i.e. issuer role with a wallet address). OTP-based logins have no
+    // WalletConnect session, so calling killSession() would throw
+    // "Missing or invalid topic field".
     const handleDisconnect = () => {
         addAuditEntry('LOGOUT', `User ${address} disconnected`);
-        try { peraWallet.disconnect().catch(() => {}); } catch (e) { }
+        if (userRole === 'issuer' && address && address.length > 20) {
+            // Looks like a real Algorand address — safe to disconnect Pera
+            try {
+                peraWallet.disconnect().catch((err) => {
+                    console.warn('Pera disconnect failed (session may already be closed):', err.message);
+                });
+            } catch (e) {
+                console.warn('Pera disconnect sync error:', e.message);
+            }
+        }
         setAddress('');
         setUserRole('');
         setCurrentStudent(null);

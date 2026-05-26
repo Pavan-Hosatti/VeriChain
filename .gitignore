@@ -35,6 +35,9 @@ ai-service/venv/
 .DS_Store
 Thumbs.db
 
+# Accidental artifacts
+frontend/backend/
+
 # Local Database and PDFs
 backend/credentials.json
 backend/api_keys.json
