@@ -44,7 +44,7 @@ const FlowExplanation = () => {
                 A complete credential lifecycle — from issuance to revocation — secured by Algorand.
             </p>
 
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '2.5rem', flexWrap: 'wrap', marginBottom: '3.5rem', color: 'var(--cv-text-muted)', fontSize: '0.95rem', fontWeight: '500' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '2.5rem', flexWrap: 'wrap', marginBottom: '2rem', color: 'var(--cv-text-muted)', fontSize: '0.95rem', fontWeight: '500' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <BrainCircuit size={18} color="#38bdf8" /> AI Forensic Pipeline
                 </div>
@@ -54,6 +54,19 @@ const FlowExplanation = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <WifiOff size={18} color="#a855f7" /> Offline Verification
                 </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap', marginBottom: '3.5rem' }}>
+                {[
+                    { title: '1. File loaded in browser', detail: 'certificate.pdf (application/pdf)', state: 'done' },
+                    { title: '2. POST to AI service', detail: 'https://verichain-bowk.onrender.com/analyze', state: 'done' },
+                    { title: '3. JSON verdict returned', detail: 'badge=green, trust=0.985', state: 'done' }
+                ].map((item) => (
+                    <div key={item.title} style={{ display: 'grid', gap: '0.25rem', padding: '0.7rem 0.8rem', borderRadius: '10px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', minWidth: '220px', textAlign: 'left' }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#22c55e' }}>{item.title}</div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--cv-text-dim)', wordBreak: 'break-all' }}>{item.detail}</div>
+                    </div>
+                ))}
             </div>
 
             <div className="flow-steps">

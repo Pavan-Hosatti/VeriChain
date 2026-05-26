@@ -73,9 +73,11 @@ app.get('/api/claims/:studentId', (req, res) => {
 // Serves a simple JSON snapshot file located at backend/revocations.json
 app.get('/api/v1/revocations', (req, res) => {
     try {
-        // Lazy read so edits to the JSON file are reflected without restart in dev
-        // (in production you'd read from a DB or generate dynamically)
-        const snapshot = JSON.parse(fs.readFileSync(path.join(__dirname, 'revocations.json'), 'utf8'));
+        const filePath = path.join(__dirname, 'revocations.json');
+        if (!fs.existsSync(filePath)) {
+            fs.writeFileSync(filePath, JSON.stringify({ revokedIds: [], snapshotAt: new Date().toISOString() }, null, 2));
+        }
+        const snapshot = JSON.parse(fs.readFileSync(filePath, 'utf8'));
         res.json(snapshot);
     } catch (err) {
         res.status(500).json({ error: 'Could not load revocation snapshot' });
@@ -145,6 +147,16 @@ app.locals.firestoreDb = null;  // Firestore instance, or null if not configured
 // --- Persistent Storage Helpers ---
 const CREDENTIALS_DB_PATH = path.join(__dirname, 'credentials.json');
 const API_KEYS_DB_PATH = path.join(__dirname, 'api_keys.json');
+const REVOCATIONS_DB_PATH = path.join(__dirname, 'revocations.json');
+
+// Initialize revocations
+try {
+    if (!fs.existsSync(REVOCATIONS_DB_PATH)) {
+        fs.writeFileSync(REVOCATIONS_DB_PATH, JSON.stringify({ revokedIds: [], snapshotAt: new Date().toISOString() }, null, 2));
+    }
+} catch (e) {
+    console.error('Failed to init revocations DB', e);
+}
 
 // Load credentials
 let inMemoryCredentials = {};

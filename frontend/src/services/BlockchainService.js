@@ -125,6 +125,6 @@ export const BlockchainService = {
      * Standard confirmation wait
      */
     async waitForConfirmation(txId) {
-        return await algosdk.waitForConfirmation(algodClient, txId, 4);
+        return await algosdk.waitForConfirmation(algodClient, txId, 20); // Increased from 4 for testnet reliability
     }
 };
