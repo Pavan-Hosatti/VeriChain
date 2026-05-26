@@ -205,7 +205,7 @@ export const buildShareProof = async ({
     };
 
     // Try asymmetric Ed25519 signing via local backend
-    const API_BASE = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE) || 'http://127.0.0.1:4001';
+    const API_BASE = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE) || 'https://verichain-backend-o862.onrender.com';
     try {
         const response = await fetch(`${API_BASE}/api/v1/sign-proof`, {
             method: 'POST',

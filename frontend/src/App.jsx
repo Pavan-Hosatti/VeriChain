@@ -88,7 +88,8 @@ function App() {
 
         // Sync all claims to the global-api backend store for demo purposes
         claims.forEach(c => {
-            fetch('http://localhost:4001/api/v1/store-credential', {
+            const API_BASE = import.meta.env.VITE_API_BASE || 'https://verichain-backend-o862.onrender.com';
+            fetch(`${API_BASE}/api/v1/store-credential`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -272,7 +273,8 @@ function App() {
         addAuditEntry(typeLabel, `${typeLabel}: ${newClaim.type} for Student ${newClaim.studentId} ${newClaim.previousVersion ? `(Replaces ${newClaim.previousVersion})` : ''}`);
 
         // Sync to backend in-memory store for Global Verification API
-        fetch('http://localhost:4001/api/v1/store-credential', {
+        const API_BASE = import.meta.env.VITE_API_BASE || 'https://verichain-backend-o862.onrender.com';
+        fetch(`${API_BASE}/api/v1/store-credential`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

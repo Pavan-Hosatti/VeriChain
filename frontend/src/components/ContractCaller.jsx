@@ -6,8 +6,8 @@ import { HashService } from '../services/HashService';
 import { BlockchainService, APP_ID } from '../services/BlockchainService';
 
 
-const LOCAL_BACKEND_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:4001';
-const LOCAL_AI_SERVICE = import.meta.env.VITE_AI_SERVICE_URL || 'http://127.0.0.1:8000';
+const LOCAL_BACKEND_BASE = import.meta.env.VITE_API_BASE || 'https://verichain-backend-o862.onrender.com';
+const LOCAL_AI_SERVICE = import.meta.env.VITE_AI_SERVICE_URL || 'https://verichain-bowk.onrender.com';
 
 const CLAIM_TYPES = ['Marksheet', 'Degree', 'NOC', 'Sports', 'Placement', 'Certificate', 'Internship'];
 

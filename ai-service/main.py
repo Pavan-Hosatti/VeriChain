@@ -387,6 +387,14 @@ def badge_from_score(score: float) -> str:
     return "red"
 
 
+@app.get("/")
+def read_root():
+    return {
+        "service": "SealIt AI Certificate Analyzer",
+        "status": "online",
+        "message": "Welcome! The AI microservice is running. Send POST requests to /analyze for document forensics."
+    }
+
 @app.get("/health")
 def health():
     return {

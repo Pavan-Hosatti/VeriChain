@@ -9,7 +9,8 @@ const ApiKeyManager = () => {
     const generateKey = async () => {
         setLoading(true);
         try {
-            const res = await fetch('http://localhost:4001/api/v1/generate-key', {
+            const API_BASE = import.meta.env.VITE_API_BASE || 'https://verichain-backend-o862.onrender.com';
+            const res = await fetch(`${API_BASE}/api/v1/generate-key`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -71,7 +72,7 @@ const ApiKeyManager = () => {
                             </button>
                         </div>
                         <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8', borderRadius: '8px', fontSize: '0.9rem' }}>
-                            <strong>Usage:</strong> Pass this key in the <code>x-api-key</code> header when making requests to <code>http://localhost:4001/api/v1/verify/:txId</code>.
+                            <strong>Usage:</strong> Pass this key in the <code>x-api-key</code> header when making requests to <code>{import.meta.env.VITE_API_BASE || 'https://verichain-backend-o862.onrender.com'}/api/v1/verify/:txId</code>.
                         </div>
                         
                         <button 

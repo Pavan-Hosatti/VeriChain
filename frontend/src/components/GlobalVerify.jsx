@@ -23,9 +23,10 @@ const GlobalVerify = ({ initialId }) => {
             // Test both credential ID or TX ID endpoints depending on input format
             // If it looks like a short UUID/ID, it might be a credential ID. Otherwise TxID.
             const isProbablyTxId = txId.length > 20;
+            const API_BASE = import.meta.env.VITE_API_BASE || 'https://verichain-backend-o862.onrender.com';
             const endpoint = isProbablyTxId 
-                ? `http://localhost:4001/api/v1/verify/${txId.trim()}`
-                : `http://localhost:4001/api/v1/credential/${txId.trim()}`;
+                ? `${API_BASE}/api/v1/verify/${txId.trim()}`
+                : `${API_BASE}/api/v1/credential/${txId.trim()}`;
 
             const res = await fetch(endpoint, {
                 headers: {

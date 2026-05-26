@@ -47,6 +47,14 @@ app.use(express.json({ limit: '25mb' }));
 // 3. Store non-sensitive metadata (e.g. university logs, student profiles).
 // ─────────────────────────────────────────────────────────────────────────────
 
+app.get('/', (req, res) => {
+    res.json({
+        service: 'RapidAuth Backend API',
+        status: 'online',
+        message: 'Welcome! The backend is running successfully. Access /api/health for detailed status.'
+    });
+});
+
 app.get('/api/health', (req, res) => {
     res.json({
         status: 'online',
@@ -107,7 +115,7 @@ app.post('/api/v1/ai/analyze', async (req, res) => {
             return res.status(400).json({ error: 'Missing base64 payload' });
         }
 
-        const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://127.0.0.1:8000';
+        const aiServiceUrl = process.env.AI_SERVICE_URL || 'https://verichain-bowk.onrender.com';
         const buffer = Buffer.from(base64, 'base64');
         const formData = new FormData();
         formData.append('file', new Blob([buffer], { type: mimeType || 'application/octet-stream' }), filename || 'certificate.bin');
