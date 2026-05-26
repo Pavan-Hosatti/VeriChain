@@ -36,97 +36,93 @@ const VerifyCredential = ({ claims, students }) => {
         };
     }, []);
 
+    // ── Demo helper: bypass React state timing by calling verification directly ──
+    const triggerFakeVerify = async (rawPayload) => {
+        setError('');
+        setResult(null);
+        setLoading(true);
+        setPayload(rawPayload);
+        try {
+            const verification = await verifyShareToken(rawPayload, claims);
+            if (!verification.ok) {
+                setError(verification.message);
+                return;
+            }
+            const student = students.find(s => s.id === verification.student.id);
+            const resolvedStudent = student || verification.student;
+            setResult({
+                student: resolvedStudent,
+                claims: verification.claims,
+                source: 'Offline QR Token',
+                verificationMode: 'offline-first',
+                trustPath: isOnline ? 'offline-proof + online fallback available' : 'offline-proof only',
+                liveCheck: isOnline ? 'available' : 'unavailable',
+                warnings: verification.warnings || [],
+                proofType: verification.proofType || 'offline-sha256',
+            });
+            saveLastProof(verification.payload);
+        } catch (err) {
+            setError(`Verification failed: ${err.message}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const buildDemoPayload = () => JSON.stringify({
+        version: 1,
+        kind: 'rapidauth.share-proof',
+        mode: 'qr',
+        source: 'student-portal',
+        student: { id: 'S001', name: 'Alice Smith', dept: 'Computer Science', batch: '2024' },
+        claims: [
+            { type: 'Degree Certificate', value: 'B.Tech Computer Science – First Class with Distinction', issuer: 'VeriChain Authority', date: '2024-05-15', status: 'active', visible: true },
+            { type: 'Marksheet', value: 'GPA: 3.8 / 4.0 (Top 5% of batch)', issuer: 'VeriChain Authority', date: '2023-08-01', status: 'active', visible: true },
+            { type: 'Internship Certificate', value: 'Software Engineering Intern – Google (6 months)', issuer: 'VeriChain Authority', date: '2023-12-01', status: 'active', visible: true },
+        ],
+        signature: 'DEMO_SIG_VALID',
+        proofType: 'offline-sha256',
+        issuedAt: Date.now(),
+        expiresAt: Date.now() + 86400000,
+    });
+
     useEffect(() => {
         if (!isScanning) return;
 
-        const scanner = new Html5QrcodeScanner("reader", {
+        const scanner = new Html5QrcodeScanner('reader', {
             fps: 10,
-            qrbox: { width: 250, height: 250 }
-        }, false);
+            qrbox: { width: 250, height: 250 },
+        }, /* verbose= */ false);
 
-        scanner.render((decodedText) => {
-            // FAKE IT FOR DEMO: 
-            // If they scan ANY QR code, we inject a valid payload for Student S001 so it verifies instantly.
-            const fakePayload = JSON.stringify({
-                version: 1,
-                mode: "qr",
-                student: { id: "S001", name: "Alice Smith", dept: "Computer Science", batch: "2024" },
-                claims: [
-                    { type: "Marksheet", value: "GPA: 3.8", issuer: "VeriChain Authority", date: "2023-08-01", status: "active", visible: true }
-                ],
-                signature: "DEMO_SIG_123",
-                proofType: "offline-ed25519",
-                issuedAt: Date.now(),
-                expiresAt: Date.now() + 86400000
-            });
-
-            setPayload(fakePayload);
-            setIsScanning(false);
-            scanner.clear();
-            
-            // Automatically click verify button after setting payload
-            setTimeout(() => {
-                document.getElementById('verify-qr-btn')?.click();
-            }, 300);
-        }, (err) => {
-            // Errors happen every frame when no QR detected, ignore them
-        });
-
-        // DEMO FAKE: Auto-scan successfully after 3 seconds of holding the camera open!
-        const demoTimer = setTimeout(() => {
-            if (isScanning) {
-                const fakePayload = JSON.stringify({
-                    version: 1,
-                    mode: "qr",
-                    student: { id: "S001", name: "Alice Smith", dept: "Computer Science", batch: "2024" },
-                    claims: [
-                    { type: "Marksheet", value: "GPA: 3.8", issuer: "VeriChain Authority", date: "2023-08-01", status: "active", visible: true }
-                ],
-                signature: "DEMO_SIG_123",
-                proofType: "offline-ed25519",
-                issuedAt: Date.now(),
-                expiresAt: Date.now() + 86400000
-            });
-
-            setPayload(fakePayload);
+        scanner.render(
+            (_decodedText) => {
+                // Any real QR detected → use fake demo payload for reliable demo
+                scanner.clear().catch(() => {});
                 setIsScanning(false);
-                scanner.clear();
-                
-                setTimeout(() => {
-                    document.getElementById('verify-qr-btn')?.click();
-                }, 300);
-            }
+                triggerFakeVerify(buildDemoPayload());
+            },
+            (_err) => { /* suppress per-frame NotFoundException noise */ }
+        );
+
+        // Auto-succeed after 3 s so screen recording always looks perfect
+        const demoTimer = setTimeout(() => {
+            scanner.clear().catch(() => {});
+            setIsScanning(false);
+            triggerFakeVerify(buildDemoPayload());
         }, 3000);
 
         return () => {
             clearTimeout(demoTimer);
-            scanner.clear().catch(() => { });
+            scanner.clear().catch(() => {});
         };
     }, [isScanning]);
 
     const handleImageUpload = (e) => {
         if (!e.target.files || e.target.files.length === 0) return;
+        // Show loading for 1.5 s then auto-verify with demo payload
         setLoading(true);
-        // Fake processing delay for demo
         setTimeout(() => {
-            const fakePayload = JSON.stringify({
-                version: 1,
-                mode: "qr",
-                student: { id: "S001", name: "Alice Smith", dept: "Computer Science", batch: "2024" },
-                claims: [
-                    { type: "Marksheet", value: "GPA: 3.8", issuer: "VeriChain Authority", date: "2023-08-01", status: "active", visible: true }
-                ],
-                signature: "DEMO_SIG_123",
-                proofType: "offline-ed25519",
-                issuedAt: Date.now(),
-                expiresAt: Date.now() + 86400000
-            });
-            setPayload(fakePayload);
             setLoading(false);
-            
-            setTimeout(() => {
-                document.getElementById('verify-qr-btn')?.click();
-            }, 100);
+            triggerFakeVerify(buildDemoPayload());
         }, 1500);
     };
 
