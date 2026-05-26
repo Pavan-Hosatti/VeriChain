@@ -1,5 +1,5 @@
 import React from 'react';
-import { Wallet, ShieldCheck, Share2, History, ChevronRight } from 'lucide-react';
+import { Wallet, ShieldCheck, Share2, History, ChevronRight, BrainCircuit, Globe, WifiOff } from 'lucide-react';
 
 /**
  * FlowExplanation — Visual 4-step credential lifecycle.
@@ -9,7 +9,7 @@ const steps = [
     {
         number: '01',
         title: 'Authority Mints',
-        desc: 'University connects via Pera Wallet and issues tamper-proof credentials as on-chain NFTs on Algorand.',
+        desc: 'Documents pass through an AI forensic pipeline before the University mints them as tamper-proof credentials on Algorand.',
         Icon: Wallet,
         colorClass: 'icon-blue',
     },
@@ -23,7 +23,7 @@ const steps = [
     {
         number: '03',
         title: 'Recruiter Verifies',
-        desc: 'Recruiters paste a Magic Link or scan a QR to instantly verify credentials — no wallet or crypto needed.',
+        desc: 'Recruiters verify instantly via QR, Magic Link, or Global API. Cryptographic proofs enable fully offline verification.',
         Icon: ShieldCheck,
         colorClass: 'icon-cyan',
     },
@@ -43,6 +43,18 @@ const FlowExplanation = () => {
             <p className="flow-subheading">
                 A complete credential lifecycle — from issuance to revocation — secured by Algorand.
             </p>
+
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '2.5rem', flexWrap: 'wrap', marginBottom: '3.5rem', color: 'var(--cv-text-muted)', fontSize: '0.95rem', fontWeight: '500' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <BrainCircuit size={18} color="#38bdf8" /> AI Forensic Pipeline
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Globe size={18} color="#22c55e" /> Global B2B API
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <WifiOff size={18} color="#a855f7" /> Offline Verification
+                </div>
+            </div>
 
             <div className="flow-steps">
                 {steps.map((step, i) => (

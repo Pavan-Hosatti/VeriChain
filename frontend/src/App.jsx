@@ -348,7 +348,7 @@ function App() {
             <header className="cv-header">
                 <div className="cv-logo-group">
                     <Shield size={32} color="var(--cv-primary)" />
-                    <h2 className="text-gradient">VeriChain <span className="cv-tag">Demo</span></h2>
+                    <h2 className="text-gradient">VeriChain</h2>
                 </div>
                 {address && (
                     <div className="cv-header-right">
