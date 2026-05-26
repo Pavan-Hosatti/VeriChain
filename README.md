@@ -33,6 +33,8 @@ VeriChain introduces a three-role system:
 
 Every issuance produces a real Algorand transaction ID. Every document is forensically analyzed before minting. Nothing can be altered or silently deleted.
 
+![System Architecture](system%20architecture%20diagram.jpeg)
+
 ---
 
 ## Features
