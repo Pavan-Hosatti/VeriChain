@@ -4,10 +4,10 @@ Blockchain-based academic credential verification platform built on Algorand.
 
 Universities issue tamper-proof digital credentials anchored on-chain. Students control their vault. Verifiers check authenticity instantly. An AI forensic layer catches forged documents before they ever reach the blockchain.
 
-**Live Platform (Frontend):** https://veri-chain-s5q7.vercel.app  
-**Deployed Backend API:** https://verichain-backend-o862.onrender.com  
-**AI Forensic Service:** https://verichain-bowk.onrender.com  
-**Smart Contract (Testnet):** App ID `755797878` — [View App on Lora Explorer](https://lora.algokit.io/testnet/application/755797878) | [Sample Issuance Transaction](https://lora.algokit.io/testnet/transaction/WCY6BLHSWEK3TGIFGWSOVS23HLQOOUOVBI4XI26EINBQ5IKXI4CA)
+Live Platform (Frontend): https://veri-chain-s5q7.vercel.app  
+Deployed Backend API: https://verichain-backend-o862.onrender.com  
+AI Forensic Service: https://verichain-bowk.onrender.com  
+Smart Contract (Testnet): App ID (`755797878`) — [View App on Lora Explorer](https://lora.algokit.io/testnet/application/755797878) | [Sample Issuance Transaction](https://lora.algokit.io/testnet/transaction/WCY6BLHSWEK3TGIFGWSOVS23HLQOOUOVBI4XI26EINBQ5IKXI4CA)
 ---
 
 ## Table of Contents
