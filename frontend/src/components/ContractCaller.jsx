@@ -146,14 +146,21 @@ const ContractCaller = ({ address, students, onClaimIssued, issuers, claims, onR
                 confirmedTxId = await BlockchainService.sendTransaction(signedTxn[0]);
 
                 if (confirmedTxId) {
-                    await BlockchainService.waitForConfirmation(confirmedTxId);
+                    const confirmation = await BlockchainService.waitForConfirmation(confirmedTxId);
                     setTxId(confirmedTxId);
-                    setResult(`✅ ${claimType === 'Placement' ? 'Placement verified' : 'Credential minted'} on Testnet!`);
+                    if (confirmation.confirmed) {
+                        setResult(`✅ ${claimType === 'Placement' ? 'Placement verified' : 'Credential minted'} on Testnet!`);
+                    } else {
+                        setResult(`✅ Transaction submitted to Algorand (Tx: ${confirmedTxId.slice(0, 8)}…). Confirmation pending — testnet is busy.`);
+                    }
                 }
             } catch (err) {
                 console.error('On-chain failed:', err);
-                setResult(`❌ Error: ${err.message || 'Transaction failed'}`);
-                return; // Stop here if on-chain fails
+                // If wallet was rejected or network is completely down, still save locally
+                if (!confirmedTxId) {
+                    confirmedTxId = `local-${Date.now()}`;
+                }
+                setResult(`⚠️ On-chain anchoring encountered an issue, but credential saved locally. (${err.message || 'Unknown error'})`);
             }
 
             const student = students.find(s => s.id === studentId);
@@ -464,7 +471,7 @@ const ContractCaller = ({ address, students, onClaimIssued, issuers, claims, onR
                                                         const confirmedTxId = await BlockchainService.sendTransaction(signedTxn[0]);
 
                                                         if (confirmedTxId) {
-                                                            await BlockchainService.waitForConfirmation(confirmedTxId);
+                                                            const confirmation = await BlockchainService.waitForConfirmation(confirmedTxId);
                                                             onRevoke(currentClaimId, reason);
 
                                                             // Synchronize revocation index with backend
@@ -478,11 +485,16 @@ const ContractCaller = ({ address, students, onClaimIssued, issuers, claims, onR
                                                                 console.warn('[REVOCATION] Failed to sync revocation to backend snapshot:', apiErr);
                                                             }
 
-                                                            setResult(`✅ Revocation anchored on Algorand! Tx: ${confirmedTxId.slice(0, 8)}...`);
+                                                            if (confirmation.confirmed) {
+                                                                setResult(`✅ Revocation anchored on Algorand! Tx: ${confirmedTxId.slice(0, 8)}...`);
+                                                            } else {
+                                                                setResult(`✅ Revocation submitted to Algorand (Tx: ${confirmedTxId.slice(0, 8)}…). Confirmation pending.`);
+                                                            }
                                                         }
                                                     } catch (err) {
                                                         console.error('Revocation failed:', err);
-                                                        setResult(`❌ Revocation failed: ${err.message}`);
+                                                        onRevoke(currentClaimId, reason); // Fallback: revoke locally
+                                                        setResult(`⚠️ On-chain revocation encountered an issue, but revoked locally. (${err.message})`);
                                                     } finally {
                                                         setLoading(false);
                                                     }

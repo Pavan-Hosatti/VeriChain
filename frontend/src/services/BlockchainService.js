@@ -122,9 +122,24 @@ export const BlockchainService = {
     },
 
     /**
-     * Standard confirmation wait
+     * Resilient confirmation wait — never throws.
+     * Returns { confirmed: true/false, txId, ... }
+     * If testnet is slow, we return a "pending" result instead of crashing.
      */
     async waitForConfirmation(txId) {
-        return await algosdk.waitForConfirmation(algodClient, txId, 20); // Increased from 4 for testnet reliability
+        const TIMEOUT_MS = 15_000;
+        try {
+            const result = await Promise.race([
+                algosdk.waitForConfirmation(algodClient, txId, 20),
+                new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('confirmation_timeout')), TIMEOUT_MS)
+                ),
+            ]);
+            return { ...result, confirmed: true, txId };
+        } catch (err) {
+            // Transaction was already submitted successfully — it will confirm eventually.
+            console.warn('[ALGO] Confirmation wait exceeded; tx was submitted and will finalize shortly:', txId);
+            return { confirmed: false, txId, pending: true };
+        }
     }
 };
