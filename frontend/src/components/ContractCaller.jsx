@@ -31,15 +31,7 @@ const ContractCaller = ({ address, students, onClaimIssued, issuers, claims, onR
 
     const isWhitelisted = issuers.includes(address);
 
-    const aiFileToBase64 = (file) => new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-            const value = String(reader.result || '');
-            resolve(value.includes(',') ? value.split(',')[1] : value);
-        };
-        reader.onerror = () => reject(new Error('Could not read file'));
-        reader.readAsDataURL(file);
-    });
+
 
     const runAiAnalysis = async (file) => {
         setAiError('');
@@ -47,17 +39,17 @@ const ContractCaller = ({ address, students, onClaimIssued, issuers, claims, onR
         setAiAnalyzing(true);
         setAiTrace([
             { title: '1. File loaded in browser', detail: `${file.name} (${file.type || 'unknown type'})`, state: 'done' },
-            { title: '2. POST to local backend', detail: `${LOCAL_BACKEND_BASE}/api/v1/ai/analyze`, state: 'running' },
-            { title: '3. Backend forwards to AI service', detail: `${LOCAL_AI_SERVICE}/analyze`, state: 'running' },
-            { title: '4. JSON verdict returned', detail: 'Waiting for structured response', state: 'pending' },
+            { title: '2. POST to AI service', detail: `${LOCAL_AI_SERVICE}/analyze`, state: 'running' },
+            { title: '3. JSON verdict returned', detail: 'Waiting for structured response', state: 'pending' },
         ]);
 
         try {
-            const base64 = await aiFileToBase64(file);
-            const response = await fetch(`${LOCAL_BACKEND_BASE}/api/v1/ai/analyze`, {
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            const response = await fetch(`${LOCAL_AI_SERVICE.replace(/\/$/, '')}/analyze`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ filename: file.name, mimeType: file.type, base64 }),
+                body: formData
             });
 
             const data = await response.json();
@@ -68,15 +60,14 @@ const ContractCaller = ({ address, students, onClaimIssued, issuers, claims, onR
             setAiResult(data);
             setAiTrace([
                 { title: '1. File loaded in browser', detail: `${file.name} (${file.type || 'unknown type'})`, state: 'done' },
-                { title: '2. POST to local backend', detail: `${LOCAL_BACKEND_BASE}/api/v1/ai/analyze`, state: 'done' },
-                { title: '3. Backend forwards to AI service', detail: `${LOCAL_AI_SERVICE}/analyze`, state: 'done' },
-                { title: '4. JSON verdict returned', detail: `badge=${data.badge}, trust=${typeof data.trust_score === 'number' ? data.trust_score.toFixed(3) : data.trust_score}`, state: 'done' },
+                { title: '2. POST to AI service', detail: `${LOCAL_AI_SERVICE}/analyze`, state: 'done' },
+                { title: '3. JSON verdict returned', detail: `badge=${data.badge}, trust=${typeof data.trust_score === 'number' ? data.trust_score.toFixed(3) : data.trust_score}`, state: 'done' },
             ]);
         } catch (err) {
             setAiError(err.message || 'AI analysis failed');
             setAiTrace(prev => [
-                ...prev.slice(0, 3),
-                { title: '4. JSON verdict returned', detail: err.message || 'Request failed', state: 'error' },
+                ...prev.slice(0, 2),
+                { title: '3. JSON verdict returned', detail: err.message || 'Request failed', state: 'error' },
             ]);
         } finally {
             setAiAnalyzing(false);
